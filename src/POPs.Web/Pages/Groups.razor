@@ -1,0 +1,188 @@
+@page "/groups"
+@inject ApiClient Api
+@inject AuthState Auth
+
+<PageTitle>Группы</PageTitle>
+
+@if (!Auth.IsAdmin)
+{
+    <div class="alert alert-warning">Доступ только для администратора. <a href="login">Войти</a></div>
+}
+else
+{
+    <h1>Управление группами</h1>
+
+    @if (!string.IsNullOrEmpty(_message))
+    {
+        <div class="alert alert-info">@_message</div>
+    }
+
+    <div class="card mb-3">
+        <div class="card-body">
+            <h5>Создать / редактировать группу</h5>
+            <div class="row g-2">
+                <div class="col-md-3">
+                    <input class="form-control" placeholder="Название" @bind="_form.Name" />
+                </div>
+                <div class="col-md-3">
+                    <input class="form-control" placeholder="Куратор" @bind="_form.Curator" />
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select" @bind="_form.CourseId">
+                        @foreach (var c in _courses)
+                        {
+                            <option value="@c.Id">@c.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-auto">
+                    <button class="btn btn-success" @onclick="Save">@(_editId == null ? "Создать" : "Сохранить")</button>
+                    @if (_editId != null)
+                    {
+                        <button class="btn btn-secondary" @onclick="ResetForm">Отмена</button>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-body">
+            <h5>Зачисление студента в группу</h5>
+            <div class="row g-2">
+                <div class="col-md-4">
+                    <select class="form-select" @bind="_enrollStudentId">
+                        @foreach (var s in _students)
+                        {
+                            <option value="@s.Id">@s.FullName</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <select class="form-select" @bind="_enrollGroupId">
+                        @foreach (var g in _groups)
+                        {
+                            <option value="@g.Id">@g.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-auto">
+                    <button class="btn btn-primary" @onclick="Enroll">Зачислить</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <table class="table table-striped table-sm">
+        <thead>
+            <tr>
+                <th>Id</th>
+                <th>Название</th>
+                <th>Куратор</th>
+                <th>Курс</th>
+                <th>Студентов</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var g in _groups)
+            {
+                <tr>
+                    <td>@g.Id</td>
+                    <td>@g.Name</td>
+                    <td>@g.Curator</td>
+                    <td>@g.CourseName</td>
+                    <td>@g.StudentsCount</td>
+                    <td class="text-nowrap">
+                        <button class="btn btn-sm btn-outline-primary" @onclick="() => StartEdit(g)">Изменить</button>
+                        <button class="btn btn-sm btn-outline-secondary" @onclick="() => AssignCurator(g)">Куратор</button>
+                        <button class="btn btn-sm btn-outline-danger" @onclick="() => Delete(g.Id)">Удалить</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<GroupDto> _groups = new();
+    private List<CourseDto> _courses = new();
+    private List<StudentDto> _students = new();
+    private GroupCreateRequest _form = new();
+    private int? _editId;
+    private int _enrollStudentId;
+    private int _enrollGroupId;
+    private string? _message;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Auth.IsAdmin) await Load();
+    }
+
+    private async Task Load()
+    {
+        _courses = await Api.GetCoursesAsync() ?? new();
+        _groups = await Api.GetGroupsAsync() ?? new();
+        _students = await Api.GetStudentsAsync() ?? new();
+        _form.CourseId = _courses.FirstOrDefault()?.Id ?? 0;
+        _enrollStudentId = _students.FirstOrDefault()?.Id ?? 0;
+        _enrollGroupId = _groups.FirstOrDefault()?.Id ?? 0;
+    }
+
+    private void StartEdit(GroupDto g)
+    {
+        _editId = g.Id;
+        _form = new GroupCreateRequest { Name = g.Name, Curator = g.Curator, CourseId = g.CourseId };
+    }
+
+    private void ResetForm()
+    {
+        _editId = null;
+        _form = new GroupCreateRequest { CourseId = _courses.FirstOrDefault()?.Id ?? 0 };
+    }
+
+    private async Task Save()
+    {
+        if (_editId == null)
+        {
+            var (ok, error, _) = await Api.CreateGroupAsync(_form);
+            _message = ok ? "Группа создана." : error;
+        }
+        else
+        {
+            var (ok, error, _) = await Api.UpdateGroupAsync(new GroupUpdateRequest
+            {
+                Id = _editId.Value,
+                Name = _form.Name,
+                Curator = _form.Curator,
+                CourseId = _form.CourseId
+            });
+            _message = ok ? "Группа обновлена." : error;
+        }
+
+        ResetForm();
+        await Load();
+    }
+
+    private async Task AssignCurator(GroupDto g)
+    {
+        var curator = g.Curator + " (обновлён)";
+        var (ok, error, _) = await Api.AssignCuratorAsync(g.Id, curator);
+        _message = ok ? "Куратор назначен." : error;
+        await Load();
+    }
+
+    private async Task Enroll()
+    {
+        var (ok, error) = await Api.EnrollStudentAsync(_enrollStudentId, _enrollGroupId);
+        _message = ok ? "Студент зачислен." : error;
+        await Load();
+    }
+
+    private async Task Delete(int id)
+    {
+        var (ok, error) = await Api.DeleteGroupAsync(id);
+        _message = ok ? "Группа удалена." : error;
+        await Load();
+    }
+}

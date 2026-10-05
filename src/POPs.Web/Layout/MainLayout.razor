@@ -1,0 +1,43 @@
+﻿@inherits LayoutComponentBase
+@inject AuthState Auth
+@inject NavigationManager Nav
+@implements IDisposable
+
+<div class="page">
+    <div class="sidebar">
+        <NavMenu />
+    </div>
+
+    <main>
+        <div class="top-row px-4">
+            @if (Auth.IsAuthenticated)
+            {
+                <span class="me-3">@Auth.FullName (@(Auth.IsAdmin ? "Администратор" : "Студент"))</span>
+                <button class="btn btn-sm btn-outline-secondary" @onclick="Logout">Выйти</button>
+            }
+            else
+            {
+                <a href="login">Войти</a>
+            }
+        </div>
+
+        <article class="content px-4">
+            @Body
+        </article>
+    </main>
+</div>
+
+@code {
+    protected override void OnInitialized()
+    {
+        Auth.OnChange += StateHasChanged;
+    }
+
+    private void Logout()
+    {
+        Auth.Logout();
+        Nav.NavigateTo("login");
+    }
+
+    public void Dispose() => Auth.OnChange -= StateHasChanged;
+}

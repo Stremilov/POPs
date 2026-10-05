@@ -1,0 +1,63 @@
+@page "/login"
+@inject ApiClient Api
+@inject AuthState Auth
+@inject NavigationManager Nav
+
+<PageTitle>Вход</PageTitle>
+
+<h1>Вход в систему</h1>
+<p>Прецедент «Вход в систему» — для администратора и студента.</p>
+
+<div class="row">
+    <div class="col-md-5">
+        <EditForm Model="_model" OnValidSubmit="DoLogin">
+            <div class="mb-3">
+                <label class="form-label">Логин</label>
+                <InputText class="form-control" @bind-Value="_model.Login" />
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Пароль</label>
+                <InputText type="password" class="form-control" @bind-Value="_model.Password" />
+            </div>
+
+            @if (!string.IsNullOrEmpty(_error))
+            {
+                <div class="alert alert-danger">@_error</div>
+            }
+
+            <button class="btn btn-primary" type="submit" disabled="@_busy">Войти</button>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    private readonly LoginRequest _model = new() { Login = "admin", Password = "admin" };
+    private string? _error;
+    private bool _busy;
+
+    private async Task DoLogin()
+    {
+        _busy = true;
+        _error = null;
+        try
+        {
+            var result = await Api.LoginAsync(_model);
+            if (result is null || !result.Success)
+            {
+                _error = result?.Message ?? "Не удалось войти. Проверьте, что API запущен.";
+                return;
+            }
+
+            Auth.SetUser(result);
+            Nav.NavigateTo(result.Role == "Admin" ? "students" : "profile");
+        }
+        catch (Exception ex)
+        {
+            _error = $"Ошибка связи с API: {ex.Message}";
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

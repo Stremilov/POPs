@@ -1,0 +1,187 @@
+@page "/courses"
+@inject ApiClient Api
+@inject AuthState Auth
+
+<PageTitle>Курсы</PageTitle>
+
+@if (!Auth.IsAdmin)
+{
+    <div class="alert alert-warning">Доступ только для администратора. <a href="login">Войти</a></div>
+}
+else
+{
+    <h1>Управление курсами</h1>
+
+    @if (!string.IsNullOrEmpty(_message))
+    {
+        <div class="alert alert-info">@_message</div>
+    }
+
+    <div class="card mb-3">
+        <div class="card-body">
+            <h5>Создать / редактировать курс</h5>
+            <div class="row g-2">
+                <div class="col-md-2">
+                    <input type="number" class="form-control" placeholder="Номер" @bind="_form.Number" />
+                </div>
+                <div class="col-md-3">
+                    <input class="form-control" placeholder="Название" @bind="_form.Name" />
+                </div>
+                <div class="col-md-2">
+                    <input type="number" class="form-control" placeholder="Год начала" @bind="_form.StartYear" />
+                </div>
+                <div class="col-md-2">
+                    <input type="number" class="form-control" placeholder="Год окончания" @bind="_form.EndYear" />
+                </div>
+                <div class="col-auto">
+                    <button class="btn btn-success" @onclick="Save">@(_editId == null ? "Создать" : "Сохранить")</button>
+                    @if (_editId != null)
+                    {
+                        <button class="btn btn-secondary" @onclick="ResetForm">Отмена</button>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-body">
+            <h5>Привязка группы к курсу</h5>
+            <div class="row g-2">
+                <div class="col-md-4">
+                    <select class="form-select" @bind="_attachGroupId">
+                        @foreach (var g in _groups)
+                        {
+                            <option value="@g.Id">@g.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <select class="form-select" @bind="_attachCourseId">
+                        @foreach (var c in _courses)
+                        {
+                            <option value="@c.Id">@c.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-auto">
+                    <button class="btn btn-primary" @onclick="Attach">Привязать</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <table class="table table-striped table-sm">
+        <thead>
+            <tr>
+                <th>Id</th>
+                <th>Номер</th>
+                <th>Название</th>
+                <th>Годы</th>
+                <th>Групп</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var c in _courses)
+            {
+                <tr>
+                    <td>@c.Id</td>
+                    <td>@c.Number</td>
+                    <td>@c.Name</td>
+                    <td>@c.StartYear – @c.EndYear</td>
+                    <td>@c.GroupsCount</td>
+                    <td class="text-nowrap">
+                        <button class="btn btn-sm btn-outline-primary" @onclick="() => StartEdit(c)">Изменить</button>
+                        <button class="btn btn-sm btn-outline-warning" @onclick="() => Promote(c.Id)">Перевести на след. курс</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<CourseDto> _courses = new();
+    private List<GroupDto> _groups = new();
+    private CourseCreateRequest _form = new() { Number = 1, Name = "1 курс", StartYear = DateTime.Now.Year, EndYear = DateTime.Now.Year + 1 };
+    private int? _editId;
+    private int _attachGroupId;
+    private int _attachCourseId;
+    private string? _message;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Auth.IsAdmin) await Load();
+    }
+
+    private async Task Load()
+    {
+        _courses = await Api.GetCoursesAsync() ?? new();
+        _groups = await Api.GetGroupsAsync() ?? new();
+        _attachGroupId = _groups.FirstOrDefault()?.Id ?? 0;
+        _attachCourseId = _courses.FirstOrDefault()?.Id ?? 0;
+    }
+
+    private void StartEdit(CourseDto c)
+    {
+        _editId = c.Id;
+        _form = new CourseCreateRequest
+        {
+            Number = c.Number,
+            Name = c.Name,
+            StartYear = c.StartYear,
+            EndYear = c.EndYear
+        };
+    }
+
+    private void ResetForm()
+    {
+        _editId = null;
+        _form = new CourseCreateRequest
+        {
+            Number = 1,
+            Name = "1 курс",
+            StartYear = DateTime.Now.Year,
+            EndYear = DateTime.Now.Year + 1
+        };
+    }
+
+    private async Task Save()
+    {
+        if (_editId == null)
+        {
+            var (ok, error, _) = await Api.CreateCourseAsync(_form);
+            _message = ok ? "Курс создан." : error;
+        }
+        else
+        {
+            var (ok, error, _) = await Api.UpdateCourseAsync(new CourseUpdateRequest
+            {
+                Id = _editId.Value,
+                Number = _form.Number,
+                Name = _form.Name,
+                StartYear = _form.StartYear,
+                EndYear = _form.EndYear
+            });
+            _message = ok ? "Курс обновлён." : error;
+        }
+
+        ResetForm();
+        await Load();
+    }
+
+    private async Task Attach()
+    {
+        var (ok, error) = await Api.AttachGroupAsync(_attachGroupId, _attachCourseId);
+        _message = ok ? "Группа привязана." : error;
+        await Load();
+    }
+
+    private async Task Promote(int courseId)
+    {
+        var (ok, message) = await Api.PromoteAsync(courseId);
+        _message = message;
+        await Load();
+    }
+}

@@ -1,0 +1,123 @@
+@page "/profile"
+@inject ApiClient Api
+@inject AuthState Auth
+
+<PageTitle>Мои данные</PageTitle>
+
+@if (!Auth.IsStudent || Auth.StudentId is null)
+{
+    <div class="alert alert-warning">Войдите как студент. <a href="login">Вход</a></div>
+}
+else
+{
+    <h1>Внесение персональных данных</h1>
+    <p>Прецедент для роли «Студент».</p>
+
+    @if (!string.IsNullOrEmpty(_message))
+    {
+        <div class="alert alert-info">@_message</div>
+    }
+
+    @if (_loaded)
+    {
+        <div class="row">
+            <div class="col-md-6">
+                <div class="mb-2">
+                    <label class="form-label">ФИО</label>
+                    <input class="form-control" @bind="_form.FullName" />
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Дата рождения</label>
+                    <input type="date" class="form-control" @bind="_form.BirthDate" />
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Телефон</label>
+                    <input class="form-control" @bind="_form.Phone" />
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Email</label>
+                    <input class="form-control" @bind="_form.Email" />
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Адрес</label>
+                    <input class="form-control" @bind="_form.Address" />
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Предыдущее образование</label>
+                    <input class="form-control" @bind="_form.PreviousEducation" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Год выпуска</label>
+                    <input type="number" class="form-control" @bind="_form.GraduationYear" />
+                </div>
+                <button class="btn btn-primary" @onclick="Save">Сохранить</button>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body">
+                        <h5>Текущий статус</h5>
+                        <p>Группа: <b>@_groupName</b></p>
+                        <p>Статус: <b>@_status</b></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+}
+
+@code {
+    private PersonalDataRequest _form = new();
+    private bool _loaded;
+    private string? _message;
+    private string _groupName = "—";
+    private string _status = "—";
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Auth.IsStudent || Auth.StudentId is null) return;
+
+        var student = await Api.GetStudentAsync(Auth.StudentId.Value);
+        if (student == null)
+        {
+            _message = "Студент не найден.";
+            return;
+        }
+
+        _form = new PersonalDataRequest
+        {
+            FullName = student.FullName,
+            BirthDate = student.BirthDate,
+            Phone = student.Phone,
+            Email = student.Email,
+            Address = student.Address,
+            PreviousEducation = student.PreviousEducation,
+            GraduationYear = student.GraduationYear
+        };
+        _groupName = student.GroupName ?? "—";
+        _status = student.Status;
+        _loaded = true;
+    }
+
+    private async Task Save()
+    {
+        if (Auth.StudentId is null) return;
+        var (ok, error, data) = await Api.UpdatePersonalAsync(Auth.StudentId.Value, _form);
+        if (ok && data != null)
+        {
+            _message = "Персональные данные сохранены.";
+            _status = data.Status;
+            Auth.SetUser(new LoginResponse
+            {
+                Success = true,
+                Role = "Student",
+                FullName = data.FullName,
+                Login = Auth.Login,
+                StudentId = data.Id
+            });
+        }
+        else
+        {
+            _message = error;
+        }
+    }
+}

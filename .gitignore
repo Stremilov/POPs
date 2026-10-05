@@ -1,0 +1,16 @@
+## .NET
+**/bin/
+**/obj/
+**/*.user
+**/*.suo
+**/.vs/
+**/pops.db
+**/pops.db-*
+
+## OS / IDE
+.DS_Store
+.idea/
+*.swp
+
+## Secrets
+appsettings.*.local.json

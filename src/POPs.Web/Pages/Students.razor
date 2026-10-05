@@ -1,0 +1,232 @@
+@page "/students"
+@inject ApiClient Api
+@inject AuthState Auth
+@inject NavigationManager Nav
+
+<PageTitle>Студенты</PageTitle>
+
+@if (!Auth.IsAdmin)
+{
+    <div class="alert alert-warning">Доступ только для администратора. <a href="login">Войти</a></div>
+}
+else
+{
+    <h1>Управление студентами</h1>
+
+    <div class="row g-2 mb-3">
+        <div class="col-md-4">
+            <input class="form-control" placeholder="Поиск..." @bind="_search" @bind:event="oninput" />
+        </div>
+        <div class="col-auto">
+            <button class="btn btn-outline-primary" @onclick="Load">Найти</button>
+        </div>
+        <div class="col-auto">
+            <button class="btn btn-success" @onclick="StartCreate">Добавить</button>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(_message))
+    {
+        <div class="alert alert-info">@_message</div>
+    }
+
+    @if (_showForm)
+    {
+        <div class="card mb-3">
+            <div class="card-body">
+                <h5>@(_editId == null ? "Добавление студента" : "Редактирование студента")</h5>
+                <div class="row g-2">
+                    <div class="col-md-6">
+                        <label class="form-label">ФИО</label>
+                        <input class="form-control" @bind="_form.FullName" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Группа</label>
+                        <select class="form-select" @bind="_form.GroupId">
+                            @foreach (var g in _groups)
+                            {
+                                <option value="@g.Id">@g.Name</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Дата рождения</label>
+                        <input type="date" class="form-control" @bind="_form.BirthDate" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Телефон</label>
+                        <input class="form-control" @bind="_form.Phone" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Email</label>
+                        <input class="form-control" @bind="_form.Email" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Статус</label>
+                        <input class="form-control" @bind="_form.Status" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Адрес</label>
+                        <input class="form-control" @bind="_form.Address" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Пред. образование</label>
+                        <input class="form-control" @bind="_form.PreviousEducation" />
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Год выпуска</label>
+                        <input type="number" class="form-control" @bind="_form.GraduationYear" />
+                    </div>
+                    @if (_editId == null)
+                    {
+                        <div class="col-md-4">
+                            <label class="form-label">Логин</label>
+                            <input class="form-control" @bind="_form.Login" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Пароль</label>
+                            <input class="form-control" @bind="_form.Password" />
+                        </div>
+                    }
+                </div>
+                <div class="mt-3">
+                    <button class="btn btn-primary" @onclick="Save">Сохранить</button>
+                    <button class="btn btn-secondary" @onclick="() => _showForm = false">Отмена</button>
+                </div>
+            </div>
+        </div>
+    }
+
+    <table class="table table-striped table-sm">
+        <thead>
+            <tr>
+                <th>Id</th>
+                <th>ФИО</th>
+                <th>Группа</th>
+                <th>Статус</th>
+                <th>Email</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var s in _students)
+            {
+                <tr>
+                    <td>@s.Id</td>
+                    <td>@s.FullName</td>
+                    <td>@s.GroupName</td>
+                    <td>@s.Status</td>
+                    <td>@s.Email</td>
+                    <td class="text-nowrap">
+                        <button class="btn btn-sm btn-outline-primary" @onclick="() => StartEdit(s)">Изменить</button>
+                        <button class="btn btn-sm btn-outline-warning" @onclick="() => Expel(s.Id)">Отчислить</button>
+                        <button class="btn btn-sm btn-outline-danger" @onclick="() => Delete(s.Id)">Удалить</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<StudentDto> _students = new();
+    private List<GroupDto> _groups = new();
+    private string _search = string.Empty;
+    private string? _message;
+    private bool _showForm;
+    private int? _editId;
+    private StudentCreateRequest _form = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Auth.IsAdmin)
+        {
+            return;
+        }
+
+        await Load();
+    }
+
+    private async Task Load()
+    {
+        _groups = await Api.GetGroupsAsync() ?? new();
+        _students = await Api.GetStudentsAsync(_search) ?? new();
+    }
+
+    private void StartCreate()
+    {
+        _editId = null;
+        _form = new StudentCreateRequest
+        {
+            GroupId = _groups.FirstOrDefault()?.Id ?? 0,
+            BirthDate = new DateOnly(2005, 1, 1),
+            GraduationYear = DateTime.Now.Year,
+            Status = "Обучается",
+            Password = "student",
+            Login = "student" + DateTime.Now.Second
+        };
+        _showForm = true;
+    }
+
+    private void StartEdit(StudentDto s)
+    {
+        _editId = s.Id;
+        _form = new StudentCreateRequest
+        {
+            GroupId = s.GroupId,
+            FullName = s.FullName,
+            BirthDate = s.BirthDate,
+            Phone = s.Phone,
+            Email = s.Email,
+            Address = s.Address,
+            Status = s.Status,
+            PreviousEducation = s.PreviousEducation,
+            GraduationYear = s.GraduationYear
+        };
+        _showForm = true;
+    }
+
+    private async Task Save()
+    {
+        if (_editId == null)
+        {
+            var (ok, error, _) = await Api.CreateStudentAsync(_form);
+            _message = ok ? "Студент добавлен." : error;
+        }
+        else
+        {
+            var update = new StudentUpdateRequest
+            {
+                Id = _editId.Value,
+                GroupId = _form.GroupId,
+                FullName = _form.FullName,
+                BirthDate = _form.BirthDate,
+                Phone = _form.Phone,
+                Email = _form.Email,
+                Address = _form.Address,
+                Status = _form.Status,
+                PreviousEducation = _form.PreviousEducation,
+                GraduationYear = _form.GraduationYear
+            };
+            var (ok, error, _) = await Api.UpdateStudentAsync(update);
+            _message = ok ? "Данные обновлены." : error;
+        }
+
+        _showForm = false;
+        await Load();
+    }
+
+    private async Task Expel(int id)
+    {
+        var (ok, error, _) = await Api.ExpelStudentAsync(id, "по решению администрации");
+        _message = ok ? "Студент отчислен." : error;
+        await Load();
+    }
+
+    private async Task Delete(int id)
+    {
+        var ok = await Api.DeleteStudentAsync(id);
+        _message = ok ? "Студент удалён." : "Не удалось удалить.";
+        await Load();
+    }
+}
