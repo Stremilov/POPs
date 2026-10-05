@@ -1,39 +1,57 @@
 @page "/login"
+@layout LoginLayout
 @inject ApiClient Api
 @inject AuthState Auth
 @inject NavigationManager Nav
 
 <PageTitle>Вход</PageTitle>
 
-<h1>Вход в систему</h1>
-<p>Прецедент «Вход в систему» — для администратора и студента.</p>
-
-<div class="row">
-    <div class="col-md-5">
-        <EditForm Model="_model" OnValidSubmit="DoLogin">
-            <div class="mb-3">
-                <label class="form-label">Логин</label>
-                <InputText class="form-control" @bind-Value="_model.Login" />
-            </div>
-            <div class="mb-3">
-                <label class="form-label">Пароль</label>
-                <InputText type="password" class="form-control" @bind-Value="_model.Password" />
-            </div>
-
-            @if (!string.IsNullOrEmpty(_error))
-            {
-                <div class="alert alert-danger">@_error</div>
-            }
-
-            <button class="btn btn-primary" type="submit" disabled="@_busy">Войти</button>
-        </EditForm>
+<div class="auth-brand">
+    <span class="brand-mark">П</span>
+    <div>
+        <strong>Контингент</strong>
+        <small>вход в систему</small>
     </div>
+</div>
+
+<h1>Авторизация</h1>
+<p>Сначала войдите — главная страница откроется после входа.</p>
+
+<EditForm Model="_model" OnValidSubmit="DoLogin">
+    <div class="mb-3">
+        <label class="form-label">Логин</label>
+        <InputText class="form-control" @bind-Value="_model.Login" />
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Пароль</label>
+        <InputText type="password" class="form-control" @bind-Value="_model.Password" />
+    </div>
+
+    @if (!string.IsNullOrEmpty(_error))
+    {
+        <div class="alert alert-danger">@_error</div>
+    }
+
+    <button class="btn btn-primary w-100" type="submit" disabled="@_busy">Войти</button>
+</EditForm>
+
+<div class="auth-hint">
+    Администратор: <code>admin</code> / <code>admin</code><br />
+    Студент: <code>student</code> / <code>student</code>
 </div>
 
 @code {
     private readonly LoginRequest _model = new() { Login = "admin", Password = "admin" };
     private string? _error;
     private bool _busy;
+
+    protected override void OnInitialized()
+    {
+        if (Auth.IsAuthenticated)
+        {
+            Nav.NavigateTo("/", replace: true);
+        }
+    }
 
     private async Task DoLogin()
     {
@@ -49,7 +67,7 @@
             }
 
             Auth.SetUser(result);
-            Nav.NavigateTo(result.Role == "Admin" ? "students" : "profile");
+            Nav.NavigateTo("/", replace: true);
         }
         catch (Exception ex)
         {

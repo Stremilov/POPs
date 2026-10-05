@@ -3,34 +3,40 @@
 @inject NavigationManager Nav
 @implements IDisposable
 
-<div class="page">
-    <div class="sidebar">
-        <NavMenu />
-    </div>
+@if (Auth.IsAuthenticated)
+{
+    <div class="app-shell">
+        <aside class="glass-nav">
+            <NavMenu />
+        </aside>
 
-    <main>
-        <div class="top-row px-4">
-            @if (Auth.IsAuthenticated)
-            {
-                <span class="me-3">@Auth.FullName (@(Auth.IsAdmin ? "Администратор" : "Студент"))</span>
-                <button class="btn btn-sm btn-outline-secondary" @onclick="Logout">Выйти</button>
-            }
-            else
-            {
-                <a href="login">Войти</a>
-            }
+        <div class="app-main">
+            <header class="glass-topbar">
+                <div class="user-chip">
+                    <span class="user-avatar">@(string.IsNullOrEmpty(Auth.FullName) ? "?" : Auth.FullName[0].ToString().ToUpper())</span>
+                    <span>
+                        <strong>@Auth.FullName</strong>
+                        <small>@(Auth.IsAdmin ? "Администратор" : "Студент")</small>
+                    </span>
+                </div>
+                <button class="btn btn-glass btn-sm" @onclick="Logout">Выйти</button>
+            </header>
+
+            <article class="content">
+                @Body
+            </article>
         </div>
-
-        <article class="content px-4">
-            @Body
-        </article>
-    </main>
-</div>
+    </div>
+}
 
 @code {
     protected override void OnInitialized()
     {
         Auth.OnChange += StateHasChanged;
+        if (!Auth.IsAuthenticated)
+        {
+            Nav.NavigateTo("login", replace: true);
+        }
     }
 
     private void Logout()

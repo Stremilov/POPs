@@ -4,6 +4,16 @@
 
 Приложение реализовано по диаграмме классов, вариантов использования и активности из лабораторной работы.
 
+## Видеообзор
+
+Короткий обзор системы (вход, дашборд, студенты, группы, курсы, отчёты, роль студента).
+
+<video controls width="100%">
+  <source src="docs/Obzor-uchet-kontingenta.mp4" type="video/mp4">
+</video>
+
+[Смотреть / скачать MP4](https://github.com/Stremilov/POPs/raw/main/docs/Obzor-uchet-kontingenta.mp4)
+
 ## Структура
 
 ```

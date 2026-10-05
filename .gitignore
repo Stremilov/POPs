@@ -15,3 +15,7 @@
 
 ## Secrets
 appsettings.*.local.json
+
+## Demo
+docs/demo-raw/
+tools/demo-video/node_modules/

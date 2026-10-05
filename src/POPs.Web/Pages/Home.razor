@@ -1,42 +1,65 @@
 ﻿@page "/"
 @inject AuthState Auth
+@inject NavigationManager Nav
+@inject ApiClient Api
 
 <PageTitle>Учёт контингента</PageTitle>
 
-<h1>Учёт контингента студентов</h1>
-
-<p class="lead">
-    Модуль управления студентами, группами, курсами и отчётами.
-</p>
-
-@if (!Auth.IsAuthenticated)
+@if (Auth.IsAdmin && _overview != null)
 {
-    <div class="alert alert-info">
-        Войдите в систему, чтобы продолжить.
-        <div class="mt-2">
-            <a class="btn btn-primary" href="login">Вход</a>
+    <div class="stat-grid">
+        <div class="stat-card">
+            <span>Студентов</span>
+            <strong>@_overview.TotalStudents</strong>
+            <em>контингент</em>
+        </div>
+        <div class="stat-card">
+            <span>Групп</span>
+            <strong>@_overview.TotalGroups</strong>
+        </div>
+        <div class="stat-card">
+            <span>Курсов</span>
+            <strong>@_overview.TotalCourses</strong>
         </div>
     </div>
+}
 
-    <div class="card mt-3">
+<div class="hero-grid">
+    <div class="hero-banner">
+        <h2>Учёт контингента</h2>
+        <p class="mb-0">Студенты, группы, курсы и отчёты — в одном дашборде.</p>
+    </div>
+
+    <div class="card">
         <div class="card-body">
-            <h5>Демо-учётные записи</h5>
-            <ul class="mb-0">
-                <li><b>Администратор:</b> login <code>admin</code>, пароль <code>admin</code></li>
-                <li><b>Студент:</b> login <code>student</code>, пароль <code>student</code></li>
-            </ul>
+            <h5>Сессия</h5>
+            @if (Auth.IsAdmin)
+            {
+                <p class="mb-0">Вы вошли как администратор. Управление — в меню слева.</p>
+            }
+            else
+            {
+                <p class="mb-2">Вы вошли как студент.</p>
+                <a class="btn btn-primary btn-sm" href="profile">Мои данные</a>
+            }
         </div>
     </div>
-}
-else if (Auth.IsAdmin)
-{
-    <div class="alert alert-success">
-        Вы вошли как администратор. Доступны разделы: студенты, группы, курсы, отчёты.
-    </div>
-}
-else
-{
-    <div class="alert alert-success">
-        Вы вошли как студент. Можно заполнить персональные данные в разделе «Мои данные».
-    </div>
+</div>
+
+@code {
+    private OverviewStatisticsDto? _overview;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Auth.IsAuthenticated)
+        {
+            Nav.NavigateTo("login", replace: true);
+            return;
+        }
+
+        if (Auth.IsAdmin)
+        {
+            _overview = await Api.GetOverviewAsync();
+        }
+    }
 }
