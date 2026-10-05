@@ -35,28 +35,41 @@ src/
 - **BCrypt** — хэш паролей
 - **Blazor WASM** — фронт на C#
 
-## Запуск локально
+## Запуск одной командой
 
-Нужен [.NET 8 SDK](https://dotnet.microsoft.com/download).
+Скрипт сам скачает .NET 8 (если его нет), восстановит пакеты и поднимет API + сайт.
 
-Терминал 1 — API:
+### macOS / Linux
 
 ```bash
-cd src/POPs.Api
-dotnet run
+git clone https://github.com/Stremilov/POPs.git
+cd POPs
+chmod +x start.sh
+./start.sh
 ```
 
-API: http://localhost:5080  
+Если репозиторий уже скачан:
+
+```bash
+./start.sh
+```
+
+### Windows (PowerShell или двойной клик по `start.cmd`)
+
+```powershell
+git clone https://github.com/Stremilov/POPs.git
+cd POPs
+.\start.cmd
+```
+
+или:
+
+```powershell
+.\start.ps1
+```
+
+Сайт: http://localhost:5081  
 Swagger: http://localhost:5080/swagger
-
-Терминал 2 — Web:
-
-```bash
-cd src/POPs.Web
-dotnet run
-```
-
-Web: http://localhost:5081
 
 ### Демо-логины
 
@@ -68,9 +81,3 @@ Web: http://localhost:5081
 ## Git / GitHub
 
 Репозиторий: https://github.com/Stremilov/POPs.git
-
-```bash
-git add .
-git commit -m "Добавлено приложение учёта контингента студентов"
-git push -u origin main
-```
